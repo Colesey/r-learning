@@ -11,6 +11,7 @@
 setwd("~/r-learning/Explorartory Data Analysis - Assesment 2")
 library(dplyr)
 library(ggplot2)
+library(reshape2)
 
 #Read in the data file from the current working directory into the data frame NEI
 NEI <- readRDS("summarySCC_PM25.rds")
@@ -28,6 +29,7 @@ baltimoreTypeMelt <- melt(baltimoreType, id = "type")
 
 # Open the png graphics device to create the file
 png(file = "Plot3.png")
+
 # Build the plot using ggplot.
 # The trend is shown using smoothing and the data is shown with dotted lines. I think it shows the trends better
 # and that the baddy is point emissions.
