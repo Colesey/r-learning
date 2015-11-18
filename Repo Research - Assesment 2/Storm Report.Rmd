@@ -1,0 +1,87 @@
+---
+title: "Reproducible Research Assement 2"
+author: "Chris Coles"
+date: "14 November 2015"
+output: html_document
+---
+
+Your data analysis must address the following questions:
+
+Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+Across the United States, which types of events have the greatest economic consequences?
+
+Consider writing your report as if it were to be read by a government or municipal manager who might be responsible for preparing for severe weather events and will need to prioritize resources for different types of events. However, there is no need to make any specific recommendations in your report.
+
+
+```{r}
+#This sets my working directory - remove before submission
+setwd("~/r-learning/Repo Research - Assesment 2")
+```
+
+**Data Proccessing**
+
+```{r echo=true}
+if(!file.exists("data")){dir.create("data")}
+fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileURL, destfile = "./data/StormData.csv.bz2", method="curl")
+dataDownloadDate <- date()
+stormDataRaw <- read.csv("./data/StormData.csv.bz2", header = TRUE)
+   
+```
+
+```{r echo = TRUE}
+library(dplyr)
+library(ggplot2)
+t <- subset(stormDataRaw, FATALITIES > 0 | INJURIES > 0 | PROPDMG > 0 | CROPDMG > 0)
+t <- mutate(t, year = year(strptime(t$BGN_DATE, format = "%m/%d/%Y %H:%M:%S")))
+
+t <- mutate(t, totalInjury = FATALITIES + INJURIES)
+t <- mutate(t, year = year(strptime(t$BGN_DATE, format = "%m/%d/%Y %H:%M:%S")))
+t$PROPDMGEXP <- toupper(t$PROPDMGEXP)
+t$CROPDMGEXP <- toupper(t$CROPDMGEXP)
+t$EVTYPE <- toupper(EVTYPE)
+
+library(data.table)
+setDT(t)
+t[PROPDMGEXP %in% "K", propDamage := PROPDMG * 1000]
+t[PROPDMGEXP %in% "M", propDamage := PROPDMG * 1000000]
+t[PROPDMGEXP %in% "B", propDamage := PROPDMG * 1000000000]
+
+t[CROPDMGEXP %in% "K", cropDamage := CROPDMG * 1000]
+t[CROPDMGEXP %in% "M", cropDamage := CROPDMG * 1000000]
+t[CROPDMGEXP %in% "B", cropDamage := CROPDMG * 1000000000]
+```
+
+```{r echo=TRUE}
+injuries <- tapply(t$totalInjury, year, FUN = sum)
+cropDamageYear <- tapply(t$cropDamage, year, FUN = sum)
+propDamageYear <- tapply(t$propDamage, year, FUN = sum)
+
+
+```
+
+
+Tidy Data:
+converting toupper() reduces the unique levels in RAW from 985 to 898
+?droplevels
+488 levels in subset data where there is injury or cost
+toupper() reduces it to 447
+flood <- subset(t, grepl("FLOOD",t$EVTYPE))
+
+
+Look at the annual costs and injury by year
+
+```{r echo=TRUE}
+propDmgByYear <- aggregate(propDamage~year, t, FUN = sum)
+cropDmgByYear <- aggregate(cropDamage~year, t, FUN = sum)
+injuryByYear <- aggregate(totalInjury~year, t, FUN=sum)
+
+sumData <- merge(injuryByYear, propDmgByYear, by.x = "year", by.y = "year", all=TRUE)
+sumData <- merge(sumData, cropDmgByYear, by.x = "year", by.y = "year", all=TRUE)
+qplot(sumData$year, sumData$totalInjury) + geom_line(aes(group = 1)) + geom_smooth(aes(group = 1), method= "loess")
+qplot(sumData$year, sumData$propDamage) + geom_line(aes(group = 1)) + geom_smooth(aes(group = 1), method= "loess")
+```
+
+
+
